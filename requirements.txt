@@ -5,3 +5,4 @@ numpy==1.24.4
 plotly==5.18.0
 Pillow==10.1.0
 protobuf==3.20.3
+pyarrow==0 ; python_version < '3.0'  # 这行是关键！它会在Python 3环境下阻止pyarrow安装
