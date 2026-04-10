@@ -5,29 +5,22 @@ import numpy as np
 import os, urllib, cv2
 
 # Streamlit encourages well-structured code, like starting execution in a main() function.
+# Streamlit encourages well-structured code, like starting execution in a main() function.
 def main():
-    @st.cache_resource(show_spinner=False)
-    def get_file_content_as_string(path):
-        url = 'https://raw.githubusercontent.com/streamlit/demo-self-driving/master/' + path
-        response = urllib.request.urlopen(url)
-        return response.read().decode("utf-8")
-    
-    #readme_text = st.markdown(get_file_content_as_string("instructions.md"))
+    readme_text = st.markdown(get_file_content_as_string("instructions.md"))
+
     for filename in EXTERNAL_DEPENDENCIES.keys():
         download_file(filename)
 
     # Once we have the dependencies, add a selector for the app mode on the sidebar.
     st.sidebar.title("请选择以下选项")
-    app_mode = st.sidebar.selectbox("选择应用模式",
+    app_mode = st.sidebar.selectbox("Choose the app mode",
         ["网页说明", "程序运行", "代码展示"])
-    
     if app_mode == "网页说明":
         st.sidebar.success('请选择“程序运行”开始体验')
     elif app_mode == "代码展示":
         readme_text.empty()
-        with open("streamlit_app.py", "r", encoding="utf-8") as f:
-            code_content = f.read()
-        st.code(code_content, language="python")
+        st.code(get_file_content_as_string("streamlit_app.py"))
     elif app_mode == "程序运行":
         readme_text.empty()
         run_the_app()
