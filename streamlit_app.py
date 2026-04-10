@@ -15,19 +15,20 @@ def main():
     st.sidebar.title("请选择以下选项")
     app_mode = st.sidebar.selectbox("选择应用模式",
         ["网页说明", "程序运行", "代码展示"])
-if app_mode == "网页说明":
-    st.sidebar.success('请选择“程序运行”开始体验')
-elif app_mode == "代码展示":
-    readme_text.empty()
-    # 读取本地当前文件
-    with open("streamlit_app.py", "r", encoding="utf-8") as f:
-        code_content = f.read()
-    st.code(code_content, language="python")
-elif app_mode == "程序运行":
-    readme_text.empty()
-    run_the_app()
+    
+    if app_mode == "网页说明":
+        st.sidebar.success('请选择“程序运行”开始体验')
+    elif app_mode == "代码展示":
+        readme_text.empty()
+        with open("streamlit_app.py", "r", encoding="utf-8") as f:
+            code_content = f.read()
+        st.code(code_content, language="python")
+    elif app_mode == "程序运行":
+        readme_text.empty()
+        run_the_app()
 
-# This file downloader demonstrates Streamlit animation.
+if __name__ == "__main__":
+    main()# This file downloader demonstrates Streamlit animation.
 def download_file(file_path):
     # Don't download the file twice. (If possible, verify the download using the file length.)
     if os.path.exists(file_path):
