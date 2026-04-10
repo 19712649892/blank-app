@@ -6,8 +6,13 @@ import os, urllib, cv2
 
 # Streamlit encourages well-structured code, like starting execution in a main() function.
 def main():
+    @st.cache_resource(show_spinner=False)
+    def get_file_content_as_string(path):
+        url = 'https://raw.githubusercontent.com/streamlit/demo-self-driving/master/' + path
+        response = urllib.request.urlopen(url)
+        return response.read().decode("utf-8")
+    
     readme_text = st.markdown(get_file_content_as_string("instructions.md"))
-
     for filename in EXTERNAL_DEPENDENCIES.keys():
         download_file(filename)
 
