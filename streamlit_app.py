@@ -26,14 +26,14 @@ def main():
 
 # 该文件下载器演示了Streamlit动画功能。
 def download_file(file_path):
-# 请勿重复下载该文件
+    # Don't download the file twice. (If possible, verify the download using the file length.)
     if os.path.exists(file_path):
         if "size" not in EXTERNAL_DEPENDENCIES[file_path]:
             return
         elif os.path.getsize(file_path) == EXTERNAL_DEPENDENCIES[file_path]["size"]:
             return
 
-    # 用于动画化两个视觉元素的控制柄
+    # These are handles to two visual elements to animate.
     weights_warning, progress_bar = None, None
     try:
         weights_warning = st.warning("正在下载 %s..." % file_path)
@@ -50,11 +50,11 @@ def download_file(file_path):
                     counter += len(data)
                     output_file.write(data)
 
-                    # 通过覆盖元素实现动画效果。                    weights_warning.warning("正在下载 %s... (%6.2f/%6.2f MB)" %
-                        (file_path, counter / MEGABYTES, length / MEGABYTES))
+                    # We perform animation by overwriting the elements.
+                    weights_warning.warning(f"正在下载 {file_path}... ({counter / MEGABYTES:6.2f}/{length / MEGABYTES:6.2f} MB)")
                     progress_bar.progress(min(counter / length, 1.0))
 
-    # 通过空数组函数.empty()移除视觉元素
+    # Finally, we remove these visual elements by calling .empty().
     finally:
         if weights_warning is not None:
             weights_warning.empty()
