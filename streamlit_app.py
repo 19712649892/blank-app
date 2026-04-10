@@ -197,7 +197,7 @@ def load_image(url):
 # Run the YOLO model to detect objects.
 def yolo_v3(image, confidence_threshold, overlap_threshold):
     # Load the network. Because this is cached it will only happen once.
-    @st.cache_resource()
+    @st.cache_resource
     def load_network(config_path, weights_path):
         net = cv2.dnn.readNetFromDarknet(config_path, weights_path)
         output_layer_names = net.getLayerNames()
