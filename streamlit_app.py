@@ -88,7 +88,7 @@ def run_the_app():
 #绘制用户界面元素以搜索目标物体（行人、车辆等）     
 selected_frame_index, selected_frame = frame_selector_ui(summary)
     if selected_frame_index == None:
-        st.error("没有符合条件的图像帧，请选择不同类别或数量范围")
+        st.error("没有符合条件的图像帧，请选择不同的目标类别或数量范围。")
         return
 
 # 绘制用户界面元素以选择YOLO目标检测器的参数。
