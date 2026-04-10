@@ -12,7 +12,7 @@ def main():
         response = urllib.request.urlopen(url)
         return response.read().decode("utf-8")
     
-    readme_text = st.markdown(get_file_content_as_string("instructions.md"))
+    #readme_text = st.markdown(get_file_content_as_string("instructions.md"))
     for filename in EXTERNAL_DEPENDENCIES.keys():
         download_file(filename)
 
