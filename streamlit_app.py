@@ -6,39 +6,37 @@ import os, urllib, cv2
 
 # Streamlit encourages well-structured code, like starting execution in a main() function.
 def main():
-    # Render the readme as markdown using st.markdown.
     readme_text = st.markdown(get_file_content_as_string("instructions.md"))
 
-    # Download external dependencies.
     for filename in EXTERNAL_DEPENDENCIES.keys():
         download_file(filename)
 
     # Once we have the dependencies, add a selector for the app mode on the sidebar.
-    st.sidebar.title("What to do")
+    st.sidebar.title("请选择以下选项")
     app_mode = st.sidebar.selectbox("Choose the app mode",
-        ["Show instructions", "Run the app", "Show the source code"])
-    if app_mode == "Show instructions":
-        st.sidebar.success('To continue select "Run the app".')
-    elif app_mode == "Show the source code":
+        ["网页说明", "程序运行", "代码展示"])
+    if app_mode == "网页说明":
+        st.sidebar.success('请选择“程序运行”开始体验')
+    elif app_mode == "代码展示":
         readme_text.empty()
         st.code(get_file_content_as_string("streamlit_app.py"))
-    elif app_mode == "Run the app":
+    elif app_mode == "程序运行":
         readme_text.empty()
         run_the_app()
 
-# This file downloader demonstrates Streamlit animation.
+# 该文件下载器演示了Streamlit动画功能。
 def download_file(file_path):
-    # Don't download the file twice. (If possible, verify the download using the file length.)
+# 请勿重复下载该文件
     if os.path.exists(file_path):
         if "size" not in EXTERNAL_DEPENDENCIES[file_path]:
             return
         elif os.path.getsize(file_path) == EXTERNAL_DEPENDENCIES[file_path]["size"]:
             return
 
-    # These are handles to two visual elements to animate.
+    # 用于动画化两个视觉元素的控制柄
     weights_warning, progress_bar = None, None
     try:
-        weights_warning = st.warning("Downloading %s..." % file_path)
+        weights_warning = st.warning("正在下载 %s..." % file_path)
         progress_bar = st.progress(0)
         with open(file_path, "wb") as output_file:
             with urllib.request.urlopen(EXTERNAL_DEPENDENCIES[file_path]["url"]) as response:
@@ -52,27 +50,24 @@ def download_file(file_path):
                     counter += len(data)
                     output_file.write(data)
 
-                    # We perform animation by overwriting the elements.
-                    weights_warning.warning("Downloading %s... (%6.2f/%6.2f MB)" %
+                    # 通过覆盖元素实现动画效果。                    weights_warning.warning("正在下载 %s... (%6.2f/%6.2f MB)" %
                         (file_path, counter / MEGABYTES, length / MEGABYTES))
                     progress_bar.progress(min(counter / length, 1.0))
 
-    # Finally, we remove these visual elements by calling .empty().
+    # 通过空数组函数.empty()移除视觉元素
     finally:
         if weights_warning is not None:
             weights_warning.empty()
         if progress_bar is not None:
             progress_bar.empty()
 
-# This is the main app app itself, which appears when the user selects "Run the app".
+# 程序运行板块
 def run_the_app():
-    # To make Streamlit fast, st.cache allows us to reuse computation across runs.
-    # In this common pattern, we download data from an endpoint only once.
     @st.cache_data
     def load_metadata(url):
         return pd.read_csv(url)
 
-    # This function uses some Pandas magic to summarize the metadata Dataframe.
+    # 运用Pandas 汇总元数据数据框
     @st.cache_data
     def create_summary(metadata):
         one_hot_encoded = pd.get_dummies(metadata[["frame", "label"]], columns=["label"])
@@ -85,56 +80,65 @@ def run_the_app():
         })
         return summary
 
-    # An amazing property of st.cached functions is that you can pipe them into
-    # one another to form a computation DAG (directed acyclic graph). Streamlit
-    # recomputes only whatever subset is required to get the right answer!
+
     metadata = load_metadata(os.path.join(DATA_URL_ROOT, "labels.csv.gz"))
     summary = create_summary(metadata)
 
-    # Uncomment these lines to peek at these DataFrames.
-    # st.write('## Metadata', metadata[:1000], '## Summary', summary[:1000])
 
-    # Draw the UI elements to search for objects (pedestrians, cars, etc.)
-    selected_frame_index, selected_frame = frame_selector_ui(summary)
+#绘制用户界面元素以搜索目标物体（行人、车辆等）     
+selected_frame_index, selected_frame = frame_selector_ui(summary)
     if selected_frame_index == None:
-        st.error("No frames fit the criteria. Please select different label or number.")
+        st.error("没有符合条件的图像帧，请选择不同类别或数量范围")
         return
 
-    # Draw the UI element to select parameters for the YOLO object detector.
+# 绘制用户界面元素以选择YOLO目标检测器的参数。
     confidence_threshold, overlap_threshold = object_detector_ui()
 
-    # Load the image from S3.
+    #从S3加载图像
     image_url = os.path.join(DATA_URL_ROOT, selected_frame)
     image = load_image(image_url)
 
-    # Add boxes for objects on the image. These are the boxes for the ground image.
-    boxes = metadata[metadata.frame == selected_frame].drop(columns=["frame"])
-    draw_image_with_boxes(image, boxes, "Ground Truth",
-        "**Human-annotated data** (frame `%i`)" % selected_frame_index)
+# 在图像上为对象添加框线（用于地面图象）    
+boxes = metadata[metadata.frame == selected_frame].drop(columns=["frame"])
+    draw_image_with_boxes(image, boxes, "人工标注（真实值）",
+        "**人工标注数据** (帧序号 `%i`)" % selected_frame_index)
 
-    # Get the boxes for the objects detected by YOLO by running the YOLO model.
+    # 获取YOLO模型的对应框
     yolo_boxes = yolo_v3(image, confidence_threshold, overlap_threshold)
-    draw_image_with_boxes(image, yolo_boxes, "Real-time Computer Vision",
-        "**YOLO v3 Model** (overlap `%3.1f`) (confidence `%3.1f`)" % (overlap_threshold, confidence_threshold))
+    draw_image_with_boxes(image, yolo_boxes, "计算机视觉",
+        "**YOLO v3模型检测结果** (重叠阈值 `%3.1f`) (置信度阈值 `%3.1f`)" % (overlap_threshold, confidence_threshold))
 
-# This sidebar UI is a little search engine to find certain object types.
+# 侧边栏建议搜索引擎
 def frame_selector_ui(summary):
-    st.sidebar.markdown("# Frame")
+    st.sidebar.markdown("#图像帧选择")
+# 英文到中文映射    
+label_map = {
+	'biker': '骑行者',
+	'car': '汽车',
+	'pedestrian': '行人',
+	'traffic light': '交通灯',
+	'truck': '卡车'    
+}    
+chinese_labels = [label_map[col] for col in summary.columns]
 
-    # The user can pick which type of object to search for.
-    object_type = st.sidebar.selectbox("Search for which objects?", summary.columns, 2)
+Selected_chinese=st.siderbar.selectbox("搜索目标类型", chinese_labels, index=2)
 
-    # The user can select a range for how many of the selected objecgt should be present.
-    min_elts, max_elts = st.sidebar.slider("How many %ss (select a range)?" % object_type, 0, 25, [10, 20])
+    # 反向映射回英文
+    	object_type ={v: k for k, v in label_map.items()}[selected_chinese]    
+	min_elts, max_elts = st.sidebar.slider(f"选择 {selected_chinese} 的数量范围", 0, 25, [10, 20])    
+	selected_frames = get_selected_frames(summary, object_type, min_elts, max_elts)
+
+    # 用户可选择所选对象中需呈现的数量范围.
+    min_elts, max_elts = st.sidebar.slider("选择%s的数量范围" % object_type, 0, 25, [10, 20])
     selected_frames = get_selected_frames(summary, object_type, min_elts, max_elts)
     if len(selected_frames) < 1:
         return None, None
 
-    # Choose a frame out of the selected frames.
-    selected_frame_index = st.sidebar.slider("Choose a frame (index)", 0, len(selected_frames) - 1, 0)
+# 从已选帧中选取一个帧    
+selected_frame_index = st.sidebar.slider("选择图像帧序号", 0, len(selected_frames) - 1, 0)
 
-    # Draw an altair chart in the sidebar with information on the frame.
-    objects_per_frame = summary.loc[selected_frames, object_type].reset_index(drop=True).reset_index()
+#在侧边栏绘制图标，并标注框架相关信息    
+objects_per_frame = summary.loc[selected_frames, object_type].reset_index(drop=True).reset_index()
     chart = alt.Chart(objects_per_frame, height=120).mark_area().encode(
         alt.X("index:Q", scale=alt.Scale(nice=False)),
         alt.Y("%s:Q" % object_type))
@@ -145,20 +149,19 @@ def frame_selector_ui(summary):
     selected_frame = selected_frames[selected_frame_index]
     return selected_frame_index, selected_frame
 
-# Select frames based on the selection in the sidebar
+# 根据侧边栏中的内容选择框架
 @st.cache_data(hash_funcs={np.ufunc: str})
 def get_selected_frames(summary, label, min_elts, max_elts):
     return summary[np.logical_and(summary[label] >= min_elts, summary[label] <= max_elts)].index
 
 # This sidebar UI lets the user select parameters for the YOLO object detector.
 def object_detector_ui():
-    st.sidebar.markdown("# Model")
-    confidence_threshold = st.sidebar.slider("Confidence threshold", 0.0, 1.0, 0.5, 0.01)
-    overlap_threshold = st.sidebar.slider("Overlap threshold", 0.0, 1.0, 0.3, 0.01)
+    st.sidebar.markdown("#模型参数设置")
+    confidence_threshold = st.sidebar.slider("置信度阈值", 0.0, 1.0, 0.5, 0.01)
+    overlap_threshold = st.sidebar.slider("重叠度阈值", 0.0, 1.0, 0.3, 0.01)
     return confidence_threshold, overlap_threshold
 
-# Draws an image with boxes overlayed to indicate the presence of cars, pedestrians etc.
-def draw_image_with_boxes(image, boxes, header, description):
+# 绘制图像时叠加方框以标示车辆、行人等物体的存在。def draw_image_with_boxes(image, boxes, header, description):
     # Superpose the semi-transparent object detection boxes.    # Colors for the boxes
     LABEL_COLORS = {
         "car": [255, 0, 0],
@@ -172,7 +175,7 @@ def draw_image_with_boxes(image, boxes, header, description):
         image_with_boxes[int(ymin):int(ymax),int(xmin):int(xmax),:] += LABEL_COLORS[label]
         image_with_boxes[int(ymin):int(ymax),int(xmin):int(xmax),:] /= 2
 
-    # Draw the header and image.
+    # 绘制标题与图像
     st.subheader(header)
     st.markdown(description)
     st.image(image_with_boxes.astype(np.uint8), use_column_width=True)
@@ -184,8 +187,8 @@ def get_file_content_as_string(path):
     response = urllib.request.urlopen(url)
     return response.read().decode("utf-8")
 
-# This function loads an image from Streamlit public repo on S3. We use st.cache on this
-# function as well, so we can reuse the images across runs.
+# 该函数从S3上的Streamlit公共仓库加载图像。我们在此函数中同样使用了st.cache缓存
+#机制，以便在不同运行过程中重复使用图像。
 @st.cache_data(show_spinner=False)
 def load_image(url):
     with urllib.request.urlopen(url) as response:
@@ -194,7 +197,7 @@ def load_image(url):
     image = image[:, :, [2, 1, 0]] # BGR -> RGB
     return image
 
-# Run the YOLO model to detect objects.
+# 运行YOLO模型
 def yolo_v3(image, confidence_threshold, overlap_threshold):
     # Load the network. Because this is cached it will only happen once.
     @st.cache_resource
@@ -205,12 +208,12 @@ def yolo_v3(image, confidence_threshold, overlap_threshold):
         return net, output_layer_names
     net, output_layer_names = load_network("yolov3.cfg", "yolov3.weights")
 
-    # Run the YOLO neural net.
+    #运行YOLO神经网络
     blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (416, 416), swapRB=True, crop=False)
     net.setInput(blob)
     layer_outputs = net.forward(output_layer_names)
 
-    # Supress detections in case of too low confidence or too much overlap.
+    #当置信度过低或重叠度过高时抑制检测结果。
     boxes, confidences, class_IDs = [], [], []
     H, W = image.shape[:2]
     for output in layer_outputs:
@@ -227,7 +230,7 @@ def yolo_v3(image, confidence_threshold, overlap_threshold):
                 class_IDs.append(classID)
     indices = cv2.dnn.NMSBoxes(boxes, confidences, confidence_threshold, overlap_threshold)
 
-    # Map from YOLO labels to Udacity labels.
+    # 将YOLO标签映射到Udacity标签
     UDACITY_LABELS = {
         0: 'pedestrian',
         1: 'biker',
@@ -239,13 +242,13 @@ def yolo_v3(image, confidence_threshold, overlap_threshold):
     }
     xmin, xmax, ymin, ymax, labels = [], [], [], [], []
     if len(indices) > 0:
-        # loop over the indexes we are keeping
-        for i in indices.flatten():
+        #对所保留索引的遍历        
+for i in indices.flatten():
             label = UDACITY_LABELS.get(class_IDs[i], None)
             if label is None:
                 continue
 
-            # extract the bounding box coordinates
+            # 提取边界框坐标
             x, y, w, h = boxes[i][0], boxes[i][1], boxes[i][2], boxes[i][3]
 
             xmin.append(x)
@@ -257,10 +260,10 @@ def yolo_v3(image, confidence_threshold, overlap_threshold):
     boxes = pd.DataFrame({"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax, "labels": labels})
     return boxes[["xmin", "ymin", "xmax", "ymax", "labels"]]
 
-# Path to the Streamlit public S3 bucket
+# Streamlit公共S3存储桶路径
 DATA_URL_ROOT = "https://streamlit-self-driving.s3-us-west-2.amazonaws.com/"
 
-# External files to download.
+# 待下载的外部文件
 EXTERNAL_DEPENDENCIES = {
     "yolov3.weights": {
         "url": "https://pjreddie.com/media/files/yolov3.weights",
