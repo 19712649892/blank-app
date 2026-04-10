@@ -146,7 +146,7 @@ def frame_selector_ui(summary):
     return selected_frame_index, selected_frame
 
 # Select frames based on the selection in the sidebar
-@st.cache(hash_funcs={np.ufunc: str})
+@st.cache_data(hash_funcs={np.ufunc: str})
 def get_selected_frames(summary, label, min_elts, max_elts):
     return summary[np.logical_and(summary[label] >= min_elts, summary[label] <= max_elts)].index
 
