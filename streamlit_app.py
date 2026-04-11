@@ -21,9 +21,7 @@ def main():
         ["网页说明", "程序运行", "代码展示"])
     if app_mode == "网页说明":
         st.sidebar.success('请选择“程序运行”开始体验')
-    elif app_mode == "代码展示":
-        readme_text.empty()
-        st.code(get_file_content_as_string("streamlit_app.py"))
+
     elif app_mode == "程序运行":
         readme_text.empty()
         run_the_app()
