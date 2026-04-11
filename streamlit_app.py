@@ -17,7 +17,7 @@ def main():
 
     # Once we have the dependencies, add a selector for the app mode on the sidebar.
     st.sidebar.title("请选择以下选项")
-    app_mode = st.sidebar.selectbox("Choose the app mode",
+    app_mode = st.sidebar.selectbox("",
         ["网页说明", "程序运行", "代码展示"])
     if app_mode == "网页说明":
         st.sidebar.success('请选择“程序运行”开始体验')
