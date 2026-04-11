@@ -6,7 +6,11 @@ import os, urllib, cv2
 
 # Streamlit encourages well-structured code, like starting execution in a main() function.
 def main():
-    readme_text = st.markdown(get_file_content_as_string("instructions.md"))
+    try:
+        with open("instructions.md", "r", encoding="utf-8") as f:
+            readme_text = st.markdown(f.read())
+    except FileNotFoundError:
+        readme_text = st.markdown("# 自动驾驶目标检测演示系统\n\n请在侧边栏选择“程序运行”开始体验")
 
     for filename in EXTERNAL_DEPENDENCIES.keys():
         download_file(filename)
