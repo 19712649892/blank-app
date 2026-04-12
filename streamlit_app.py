@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import os, urllib, cv2
 
-# Streamlit encourages well-structured code, like starting execution in a main() function.
 def main():
     try:
         with open("instructions.md", "r", encoding="utf-8") as f:
@@ -15,7 +14,7 @@ def main():
     for filename in EXTERNAL_DEPENDENCIES.keys():
         download_file(filename)
 
-    # Once we have the dependencies, add a selector for the app mode on the sidebar.
+#模式选择器
     st.sidebar.title("请选择以下选项")
     app_mode = st.sidebar.selectbox("",
         ["网页说明", "程序运行"])
@@ -24,16 +23,15 @@ def main():
     elif app_mode == "程序运行":
         readme_text.empty()
         run_the_app()
-# This file downloader demonstrates Streamlit animation.
+# Streamlit动画功能
 def download_file(file_path):
-    # Don't download the file twice. (If possible, verify the download using the file length.)
     if os.path.exists(file_path):
         if "size" not in EXTERNAL_DEPENDENCIES[file_path]:
             return
         elif os.path.getsize(file_path) == EXTERNAL_DEPENDENCIES[file_path]["size"]:
             return
 
-    # These are handles to two visual elements to animate.
+    # 动画化两个视觉元素的控制柄
     weights_warning, progress_bar = None, None
     try:
         weights_warning = st.warning("正在下载 %s..." % file_path)
@@ -50,18 +48,18 @@ def download_file(file_path):
                     counter += len(data)
                     output_file.write(data)
 
-                    # We perform animation by overwriting the elements.
+                    # 通过覆盖元素实现动画
                     weights_warning.warning(f"正在下载 {file_path}... ({counter / MEGABYTES:6.2f}/{length / MEGABYTES:6.2f} MB)")
                     progress_bar.progress(min(counter / length, 1.0))
 
-    # Finally, we remove these visual elements by calling .empty().
+    # 通过空数组函数.empty().移除视觉元素
     finally:
         if weights_warning is not None:
             weights_warning.empty()
         if progress_bar is not None:
             progress_bar.empty()
 
-# This is the main app app itself, which appears when the user selects "Run the app".
+#界面运行主方法
 def run_the_app():
     # To make Streamlit fast, st.cache allows us to reuse computation across runs.
     # In this common pattern, we download data from an endpoint only once.
@@ -69,7 +67,7 @@ def run_the_app():
     def load_metadata(url):
         return pd.read_csv(url)
 
-    # This function uses some Pandas magic to summarize the metadata Dataframe.
+    # 利用Pandas汇总元数据数据框
     @st.cache_data
     def create_summary(metadata):
         one_hot_encoded = pd.get_dummies(metadata[["frame", "label"]], columns=["label"])
@@ -82,29 +80,23 @@ def run_the_app():
         })
         return summary
 
-    # An amazing property of st.cached functions is that you can pipe them into
-    # one another to form a computation DAG (directed acyclic graph). Streamlit
-    # recomputes only whatever subset is required to get the right answer!
     metadata = load_metadata(os.path.join(DATA_URL_ROOT, "labels.csv.gz"))
     summary = create_summary(metadata)
 
-    # Uncomment these lines to peek at these DataFrames.
-    # st.write('## Metadata', metadata[:1000], '## Summary', summary[:1000])
-
-    # Draw the UI elements to search for objects (pedestrians, cars, etc.)
+    #绘制用户界面元素以搜索目标物体
     selected_frame_index, selected_frame = frame_selector_ui(summary)
     if selected_frame_index == None:
         st.error("没有符合条件的图像帧，请选择不同的目标类别或数量范围。")
         return
 
-    # Draw the UI element to select parameters for the YOLO object detector.
+    # 绘制用户界面元素以选择YOLO目标检测器的参数
     confidence_threshold, overlap_threshold = object_detector_ui()
 
-    # Load the image from S3.
+    #从S3加载图像
     image_url = os.path.join(DATA_URL_ROOT, selected_frame)
     image = load_image(image_url)
 
-    # Add boxes for objects on the image. These are the boxes for the ground image.
+    #在图像上为地面对象添加框线
     boxes = metadata[metadata.frame == selected_frame].drop(columns=["frame"])
     draw_image_with_boxes(image, boxes, "人工标注（真实值）",
         "**人工标注数据** (帧序号 `%i`)" % selected_frame_index)
