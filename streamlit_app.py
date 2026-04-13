@@ -238,7 +238,7 @@ def yolo_v3(image, confidence_threshold, overlap_threshold):
                 class_IDs.append(classID)
     indices = cv2.dnn.NMSBoxes(boxes, confidences, confidence_threshold, overlap_threshold)
 
-    # Map from YOLO labels to Udacity labels.
+    #将YOLO标签映射到Udacity标签
     UDACITY_LABELS = {
         0: 'pedestrian',
         1: 'biker',
@@ -250,13 +250,13 @@ def yolo_v3(image, confidence_threshold, overlap_threshold):
     }
     xmin, xmax, ymin, ymax, labels = [], [], [], [], []
     if len(indices) > 0:
-        # loop over the indexes we are keeping
+        # 对保留下的索引进行遍历
         for i in indices.flatten():
             label = UDACITY_LABELS.get(class_IDs[i], None)
             if label is None:
                 continue
 
-            # extract the bounding box coordinates
+            # 提取边界框坐标
             x, y, w, h = boxes[i][0], boxes[i][1], boxes[i][2], boxes[i][3]
 
             xmin.append(x)
