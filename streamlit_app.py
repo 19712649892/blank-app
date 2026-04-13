@@ -101,12 +101,11 @@ def run_the_app():
     draw_image_with_boxes(image, boxes, "人工标注（真实值）",
         "**人工标注数据** (帧序号 `%i`)" % selected_frame_index)
 
-    # Get the boxes for the objects detected by YOLO by running the YOLO model.
     yolo_boxes = yolo_v3(image, confidence_threshold, overlap_threshold)
     draw_image_with_boxes(image, yolo_boxes, "实时计算机视觉（YOLOv3）",
         "**YOLOv3模型检测结果** (重叠阈值 `%3.1f`) (置信度阈值 `%3.1f`)" % (overlap_threshold, confidence_threshold))
 
-# This sidebar UI is a little search engine to find certain object types.
+# 查找对象类型的选择
 def frame_selector_ui(summary):
     st.sidebar.markdown("# 图像帧选择")
 
@@ -129,10 +128,10 @@ def frame_selector_ui(summary):
     if len(selected_frames) < 1:
         return None, None
 
-    # Choose a frame out of the selected frames.
+    # 从已选帧中选取一个帧
     selected_frame_index = st.sidebar.slider("选择图像帧序号", 0, len(selected_frames) - 1, 0)
 
-    # Draw an altair chart in the sidebar with information on the frame.
+    # 绘制altair图标
     objects_per_frame = summary.loc[selected_frames, object_type].reset_index(drop=True).reset_index()
     chart = alt.Chart(objects_per_frame, height=120).mark_area().encode(
         alt.X("index:Q", scale=alt.Scale(nice=False)),
@@ -144,21 +143,20 @@ def frame_selector_ui(summary):
     selected_frame = selected_frames[selected_frame_index]
     return selected_frame_index, selected_frame
 
-# Select frames based on the selection in the sidebar
+#根据侧边栏中的内容选择框架
 @st.cache_data(hash_funcs={np.ufunc: str})
 def get_selected_frames(summary, label, min_elts, max_elts):
     return summary[np.logical_and(summary[label] >= min_elts, summary[label] <= max_elts)].index
 
-# This sidebar UI lets the user select parameters for the YOLO object detector.
+#参数选择
 def object_detector_ui():
     st.sidebar.markdown("# 模型参数设置")
     confidence_threshold = st.sidebar.slider("置信度阈值", 0.0, 1.0, 0.5, 0.01)
     overlap_threshold = st.sidebar.slider("重叠度阈值（IoU）", 0.0, 1.0, 0.3, 0.01)
     return confidence_threshold, overlap_threshold
 
-# Draws an image with boxes overlayed to indicate the presence of cars, pedestrians etc.
+#绘制图像时叠加方框
 def draw_image_with_boxes(image, boxes, header, description):
-    # Superpose the semi-transparent object detection boxes.    # Colors for the boxes
     LABEL_COLORS = {
         "car": [255, 0, 0],
         "pedestrian": [0, 255, 0],
@@ -171,20 +169,19 @@ def draw_image_with_boxes(image, boxes, header, description):
         image_with_boxes[int(ymin):int(ymax),int(xmin):int(xmax),:] += LABEL_COLORS[label]
         image_with_boxes[int(ymin):int(ymax),int(xmin):int(xmax),:] /= 2
 
-    # Draw the header and image.
+    #绘制标题与图像
     st.subheader(header)
     st.markdown(description)
     st.image(image_with_boxes.astype(np.uint8), use_column_width=True)
 
-# Download a single file and make its content available as a string.
+#文件下载
 @st.cache_resource(show_spinner=False)
 def get_file_content_as_string(path):
     url = 'https://raw.githubusercontent.com/streamlit/demo-self-driving/master/' + path
     response = urllib.request.urlopen(url)
     return response.read().decode("utf-8")
 
-# This function loads an image from Streamlit public repo on S3. We use st.cache on this
-# function as well, so we can reuse the images across runs.
+#st.cache缓存机制以便重复使用图像
 @st.cache_data(show_spinner=False)
 def load_image(url):
     with urllib.request.urlopen(url) as response:
@@ -193,9 +190,9 @@ def load_image(url):
     image = image[:, :, [2, 1, 0]] # BGR -> RGB
     return image
 
-# Run the YOLO model to detect objects.
+#运用YOLO检测图像
 def yolo_v3(image, confidence_threshold, overlap_threshold):
-    # Load the network. Because this is cached it will only happen once.
+    #加载网络
     @st.cache_resource
     def load_network(config_path, weights_path):
         net = cv2.dnn.readNetFromDarknet(config_path, weights_path)
@@ -204,12 +201,12 @@ def yolo_v3(image, confidence_threshold, overlap_threshold):
         return net, output_layer_names
     net, output_layer_names = load_network("yolov3.cfg", "yolov3.weights")
 
-    # Run the YOLO neural net.
+    #运行YOLO神经网络
     blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (416, 416), swapRB=True, crop=False)
     net.setInput(blob)
     layer_outputs = net.forward(output_layer_names)
 
-    # Supress detections in case of too low confidence or too much overlap.
+    #重叠度阈值过高或置信度阈值过低时抑制结果
     boxes, confidences, class_IDs = [], [], []
     H, W = image.shape[:2]
     for output in layer_outputs:
@@ -256,10 +253,10 @@ def yolo_v3(image, confidence_threshold, overlap_threshold):
     boxes = pd.DataFrame({"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax, "labels": labels})
     return boxes[["xmin", "ymin", "xmax", "ymax", "labels"]]
 
-# Path to the Streamlit public S3 bucket
+# 指向Streamlit公共S3存储桶的路径
 DATA_URL_ROOT = "https://streamlit-self-driving.s3-us-west-2.amazonaws.com/"
 
-# External files to download.
+# 需要下载的外部文件
 EXTERNAL_DEPENDENCIES = {
     "yolov3.weights": {
         "url": "https://pjreddie.com/media/files/yolov3.weights",
