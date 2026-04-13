@@ -4,6 +4,21 @@ import pandas as pd
 import numpy as np
 import os, urllib, cv2
 
+# 指向Streamlit公共S3存储桶的路径
+DATA_URL_ROOT = "https://streamlit-self-driving.s3-us-west-2.amazonaws.com/"
+
+# 需要下载的外部文件
+EXTERNAL_DEPENDENCIES = {
+    "yolov3.weights": {
+        "url": "https://pjreddie.com/media/files/yolov3.weights",
+        "size": 248007048
+    },
+    "yolov3.cfg": {
+        "url": "https://raw.githubusercontent.com/pjreddie/darknet/master/cfg/yolov3.cfg",
+        "size": 8342
+    }
+}
+
 def main():
     try:
         with open("instructions.md", "r", encoding="utf-8") as f:
@@ -252,21 +267,6 @@ def yolo_v3(image, confidence_threshold, overlap_threshold):
 
     boxes = pd.DataFrame({"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax, "labels": labels})
     return boxes[["xmin", "ymin", "xmax", "ymax", "labels"]]
-
-# 指向Streamlit公共S3存储桶的路径
-DATA_URL_ROOT = "https://streamlit-self-driving.s3-us-west-2.amazonaws.com/"
-
-# 需要下载的外部文件
-EXTERNAL_DEPENDENCIES = {
-    "yolov3.weights": {
-        "url": "https://pjreddie.com/media/files/yolov3.weights",
-        "size": 248007048
-    },
-    "yolov3.cfg": {
-        "url": "https://raw.githubusercontent.com/pjreddie/darknet/master/cfg/yolov3.cfg",
-        "size": 8342
-    }
-}
 
 if __name__ == "__main__":
     main()
