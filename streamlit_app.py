@@ -76,13 +76,66 @@ def download_file(file_path):
 
 #界面运行主方法
 def run_the_app():
-    # To make Streamlit fast, st.cache allows us to reuse computation across runs.
-    # In this common pattern, we download data from an endpoint only once.
+    # ==================== 新增：输入源选择 ====================
+    st.sidebar.markdown("## 输入源选择")
+    input_source = st.sidebar.radio(
+        "选择图像来源",
+        ["📁 内置数据集", "📤 上传本地图片"],
+        index=0
+    )
+
+    # 如果是上传图片模式，直接处理上传的图片
+    if input_source == "📤 上传本地图片":
+        uploaded_file = st.sidebar.file_uploader(
+            "选择一张图片", 
+            type=["jpg", "jpeg", "png"],
+            help="支持 JPG、PNG 格式"
+        )
+        
+        if uploaded_file is not None:
+            # 读取上传的图片并转换为 OpenCV 格式（BGR）
+            file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+            image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # 转为 RGB，与数据集图像一致
+            
+            # 获取检测参数
+            confidence_threshold, overlap_threshold = object_detector_ui()
+            
+            # 执行 YOLO 检测
+            with st.spinner("正在检测，请稍候..."):
+                yolo_boxes = yolo_v3(image, confidence_threshold, overlap_threshold)
+            
+            # 显示结果
+            st.subheader("📸 上传图片检测结果")
+            st.image(image, caption="原始图像", use_column_width=True)
+            
+            # 绘制检测框
+            draw_image_with_boxes(
+                image.copy(), 
+                yolo_boxes, 
+                "YOLOv3 检测结果",
+                f"**置信度阈值**: {confidence_threshold}  |  **IoU阈值**: {overlap_threshold}"
+            )
+            
+            # 显示检测统计信息
+            if len(yolo_boxes) > 0:
+                st.success(f"✅ 共检测到 {len(yolo_boxes)} 个目标")
+                # 按类别统计
+                class_counts = yolo_boxes['labels'].value_counts().reset_index()
+                class_counts.columns = ['类别', '数量']
+                st.dataframe(class_counts, use_container_width=True)
+            else:
+                st.warning("未检测到任何目标，请尝试降低置信度阈值。")
+        else:
+            st.info("👈 请先在侧边栏上传一张图片")
+        return  # 上传模式结束，不再执行数据集部分
+
+    # ==================== 原有数据集模式 ====================
+    # 以下是原有代码，保持不变
     @st.cache_data
     def load_metadata(url):
         return pd.read_csv(url)
 
-    # 利用Pandas汇总元数据数据框
     @st.cache_data
     def create_summary(metadata):
         one_hot_encoded = pd.get_dummies(metadata[["frame", "label"]], columns=["label"])
@@ -98,29 +151,23 @@ def run_the_app():
     metadata = load_metadata(os.path.join(DATA_URL_ROOT, "labels.csv.gz"))
     summary = create_summary(metadata)
 
-    #绘制用户界面元素以搜索目标物体
     selected_frame_index, selected_frame = frame_selector_ui(summary)
-    if selected_frame_index == None:
+    if selected_frame_index is None:
         st.error("没有符合条件的图像帧，请选择不同的目标类别或数量范围。")
         return
 
-    # 绘制用户界面元素以选择YOLO目标检测器的参数
     confidence_threshold, overlap_threshold = object_detector_ui()
 
-    #从S3加载图像
     image_url = os.path.join(DATA_URL_ROOT, selected_frame)
     image = load_image(image_url)
 
-    #在图像上为地面对象添加框线
     boxes = metadata[metadata.frame == selected_frame].drop(columns=["frame"])
     draw_image_with_boxes(image, boxes, "人工标注（真实值）",
         "**人工标注数据** (帧序号 `%i`)" % selected_frame_index)
 
     yolo_boxes = yolo_v3(image, confidence_threshold, overlap_threshold)
     draw_image_with_boxes(image, yolo_boxes, "实时计算机视觉（YOLOv3）",
-        "**YOLOv3模型检测结果** (重叠阈值 `%3.1f`) (置信度阈值 `%3.1f`)" % (overlap_threshold, confidence_threshold))
-
-# 查找对象类型的选择
+        "**YOLOv3模型检测结果** (重叠阈值 `%3.1f`) (置信度阈值 `%3.1f`)" % (overlap_threshold, confidence_threshold))# 查找对象类型的选择
 def frame_selector_ui(summary):
     st.sidebar.markdown("# 图像帧选择")
 
