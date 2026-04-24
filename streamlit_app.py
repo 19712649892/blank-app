@@ -153,19 +153,6 @@ def run_the_app():
         st.error("没有符合条件的图像帧，请选择不同的目标类别或数量范围。")
         return
 
-    # ==================== 数据集统计（侧边栏，可折叠，可选） ====================
-    with st.sidebar.expander("📊 数据集整体统计", expanded=False):
-        st.markdown("**每帧各类目标数量统计**")
-        st.dataframe(summary.describe())
-        st.markdown("**各类别总数量**")
-        col_totals = summary.sum()
-        total_df = pd.DataFrame({
-            "类别": ["骑行者", "汽车", "行人", "交通灯", "卡车"],
-            "总数": [col_totals["biker"], col_totals["car"], col_totals["pedestrian"],
-                     col_totals["traffic light"], col_totals["truck"]]
-        })
-        st.dataframe(total_df, use_container_width=True)
-
     # ==================== 参数设置与检测 ====================
     confidence_threshold, overlap_threshold = object_detector_ui()
 
@@ -182,7 +169,7 @@ def run_the_app():
     draw_image_with_boxes(image, yolo_boxes, "实时计算机视觉（YOLOv3）",
         "**YOLOv3模型检测结果** (重叠阈值 `%3.1f`) (置信度阈值 `%3.1f`)" % (overlap_threshold, confidence_threshold))
 
-    # ---------- 统一的检测统计表格（数据集模式下也显示） ----------
+    # ---------- 统一的检测统计表格 ----------
     if len(yolo_boxes) > 0:
         class_counts = yolo_boxes['labels'].value_counts().reset_index()
         class_counts.columns = ['类别', '数量']
