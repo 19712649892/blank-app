@@ -171,7 +171,6 @@ with st.sidebar.expander("📊 数据集统计", expanded=False):
             ]
         })
         st.dataframe(total_df, use_container_width=True)
-
     confidence_threshold, overlap_threshold = object_detector_ui()
 
     image_url = os.path.join(DATA_URL_ROOT, selected_frame)
