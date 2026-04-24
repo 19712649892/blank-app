@@ -106,6 +106,7 @@ def run_the_app():
             st.subheader("📸 上传图片检测结果")
             st.image(image, caption="原始图像", use_column_width=True)
             
+            # 绘制检测框
             draw_image_with_boxes(
                 image.copy(), 
                 yolo_boxes, 
@@ -113,10 +114,12 @@ def run_the_app():
                 f"**置信度阈值**: {confidence_threshold}  |  **IoU阈值**: {overlap_threshold}"
             )
             
+            # ---------- 统一的检测统计表格 ----------
             if len(yolo_boxes) > 0:
-                st.success(f"✅ 共检测到 {len(yolo_boxes)} 个目标")
+                # 统计各类别数量
                 class_counts = yolo_boxes['labels'].value_counts().reset_index()
                 class_counts.columns = ['类别', '数量']
+                st.subheader("📊 检测统计")
                 st.dataframe(class_counts, use_container_width=True)
             else:
                 st.warning("未检测到任何目标，请尝试降低置信度阈值。")
@@ -150,23 +153,16 @@ def run_the_app():
         st.error("没有符合条件的图像帧，请选择不同的目标类别或数量范围。")
         return
 
-    # ==================== 新增：数据集统计表格（可折叠） ====================
-    with st.sidebar.expander("📊 数据集统计", expanded=False):
-        st.markdown("**数据概览（每帧各类目标数量）**")
-        st.dataframe(summary.describe())  # 显示基本统计量
-        
+    # ==================== 数据集统计（侧边栏，可折叠，可选） ====================
+    with st.sidebar.expander("📊 数据集整体统计", expanded=False):
+        st.markdown("**每帧各类目标数量统计**")
+        st.dataframe(summary.describe())
         st.markdown("**各类别总数量**")
         col_totals = summary.sum()
-        # 将英文列名转为中文显示
         total_df = pd.DataFrame({
             "类别": ["骑行者", "汽车", "行人", "交通灯", "卡车"],
-            "总数": [
-                col_totals["biker"],
-                col_totals["car"],
-                col_totals["pedestrian"],
-                col_totals["traffic light"],
-                col_totals["truck"]
-            ]
+            "总数": [col_totals["biker"], col_totals["car"], col_totals["pedestrian"],
+                     col_totals["traffic light"], col_totals["truck"]]
         })
         st.dataframe(total_df, use_container_width=True)
 
@@ -176,13 +172,24 @@ def run_the_app():
     image_url = os.path.join(DATA_URL_ROOT, selected_frame)
     image = load_image(image_url)
 
+    # 显示人工标注
     boxes = metadata[metadata.frame == selected_frame].drop(columns=["frame"])
     draw_image_with_boxes(image, boxes, "人工标注（真实值）",
         "**人工标注数据** (帧序号 `%i`)" % selected_frame_index)
 
+    # YOLO检测
     yolo_boxes = yolo_v3(image, confidence_threshold, overlap_threshold)
     draw_image_with_boxes(image, yolo_boxes, "实时计算机视觉（YOLOv3）",
         "**YOLOv3模型检测结果** (重叠阈值 `%3.1f`) (置信度阈值 `%3.1f`)" % (overlap_threshold, confidence_threshold))
+
+    # ---------- 统一的检测统计表格（数据集模式下也显示） ----------
+    if len(yolo_boxes) > 0:
+        class_counts = yolo_boxes['labels'].value_counts().reset_index()
+        class_counts.columns = ['类别', '数量']
+        st.subheader("📊 检测统计")
+        st.dataframe(class_counts, use_container_width=True)
+    else:
+        st.info("本次检测未发现任何目标，可尝试降低置信度阈值。")
 def frame_selector_ui(summary):
     st.sidebar.markdown("# 图像帧选择")
 
