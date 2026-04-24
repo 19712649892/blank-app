@@ -76,7 +76,6 @@ def download_file(file_path):
 
 #界面运行主方法
 def run_the_app():
-    # ==================== 新增：输入源选择 ====================
     st.sidebar.markdown("## 输入源选择")
     input_source = st.sidebar.radio(
         "选择图像来源",
@@ -130,8 +129,6 @@ def run_the_app():
             st.info("👈 请先在侧边栏上传一张图片")
         return  # 上传模式结束，不再执行数据集部分
 
-    # ==================== 原有数据集模式 ====================
-    # 以下是原有代码，保持不变
     @st.cache_data
     def load_metadata(url):
         return pd.read_csv(url)
@@ -155,6 +152,25 @@ def run_the_app():
     if selected_frame_index is None:
         st.error("没有符合条件的图像帧，请选择不同的目标类别或数量范围。")
         return
+
+with st.sidebar.expander("📊 数据集统计", expanded=False):
+        st.markdown("**数据概览（每帧各类目标数量）**")
+        st.dataframe(summary.describe())  # 显示基本统计量
+        
+        st.markdown("**各类别总数量**")
+        col_totals = summary.sum()
+        # 将英文列名转为中文显示
+        total_df = pd.DataFrame({
+            "类别": ["骑行者", "汽车", "行人", "交通灯", "卡车"],
+            "总数": [
+                col_totals["biker"],
+                col_totals["car"],
+                col_totals["pedestrian"],
+                col_totals["traffic light"],
+                col_totals["truck"]
+            ]
+        })
+        st.dataframe(total_df, use_container_width=True)
 
     confidence_threshold, overlap_threshold = object_detector_ui()
 
